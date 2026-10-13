@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "taa_validation",
+  "version": "1.0.0",
+  "name": "TAA development validation",
+  "environment": "client",
+  "entrypoints": {"client": ["dev.antialiasing.validation.ValidationClient"]},
+  "mixins": ["taa-validation.mixins.json"],
+  "depends": {"taa": "*"}
+}

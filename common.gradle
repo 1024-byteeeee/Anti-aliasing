@@ -1,0 +1,148 @@
+apply plugin: 'fabric-loom'
+apply plugin: 'maven-publish'
+apply plugin: 'com.replaymod.preprocess'
+
+int mcVersion = preprocess.vars.get()['MC'] as int
+int targetJava = project.java_version as int
+
+version = project.mod_version
+group = project.maven_group
+base { archivesName = "${project.archives_base_name}-mc${project.minecraft_version}" }
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.terraformersmc.com/releases/' }
+    maven { url = 'https://api.modrinth.com/maven' }
+}
+configurations { referenceShaderLibraries }
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    modCompileOnly("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
+    if (providers.gradleProperty('withModMenu').isPresent()) {
+        modRuntimeOnly("com.terraformersmc:modmenu:${project.modmenu_version}") { transitive = false }
+    }
+    if (mcVersion == 12108 && (providers.gradleProperty('referenceShader').isPresent() || providers.gradleProperty('withRenderMods').isPresent())) {
+        modRuntimeOnly 'maven.modrinth:iris:Rhzf61g1'
+        modRuntimeOnly 'maven.modrinth:sodium:pJRT8Zxt'
+        referenceShaderLibraries 'maven.modrinth:iris:Rhzf61g1'
+        runtimeOnly files(
+            layout.buildDirectory.file('reference-libs/jcpp-1.4.14.jar'),
+            layout.buildDirectory.file('reference-libs/antlr4-runtime-4.13.1.jar'),
+            layout.buildDirectory.file('reference-libs/glsl-transformer-3.0.0-pre3.jar')
+        ).builtBy('extractReferenceLibraries')
+    }
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    if (mcVersion < 11903) include implementation('org.joml:joml:1.10.8')
+}
+tasks.register('extractReferenceLibraries', Copy) {
+    from { zipTree(configurations.referenceShaderLibraries.singleFile) }
+    include 'META-INF/jars/jcpp-*.jar', 'META-INF/jars/antlr4-runtime-*.jar', 'META-INF/jars/glsl-transformer-*.jar'
+    eachFile { path = name }
+    includeEmptyDirs = false
+    into layout.buildDirectory.dir('reference-libs')
+}
+
+sourceSets {
+    validation {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    smoke {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+if (mcVersion < 11900) {
+    sourceSets.main.output.resourcesDir = sourceSets.main.output.classesDirs.singleFile
+    tasks.named('processResources') { destinationDir = sourceSets.main.output.resourcesDir }
+}
+if (mcVersion != 12108) {
+    sourceSets.smoke.java.setSrcDirs([])
+    sourceSets.smoke.resources.setSrcDirs([])
+}
+loom {
+    runConfigs.all {
+        ideConfigGenerated = true
+        runDir "../../run-${project.minecraft_version}"
+    }
+    mods {
+        taa { sourceSet sourceSets.main }
+        taa_smoke { sourceSet sourceSets.smoke }
+        taa_validation { sourceSet sourceSets.validation }
+    }
+    runs {
+        validationClient {
+            client()
+            source sourceSets.validation
+            name "TAA ${project.minecraft_version} validation"
+            runDir "../../run-validation/${project.minecraft_version}"
+            vmArg '-Dtaa.validation=true'
+            programArgs '--width', '960', '--height', '540'
+        }
+        smokeClient {
+            client()
+            source sourceSets.smoke
+            name 'TAA rendering smoke test'
+            runDir '../../run-smoke'
+            vmArg '-Dtaa.smoke=true'
+            if (providers.gradleProperty('stability').isPresent()) vmArg '-Dtaa.stability=true'
+            if (providers.gradleProperty('glassQuality').isPresent()) vmArg '-Dtaa.glassQuality=true'
+            if (providers.gradleProperty('referenceShader').isPresent()) vmArg '-Dtaa.referenceShader=true'
+            programArgs '--width', '1280', '--height', '720'
+        }
+    }
+}
+test { useJUnitPlatform() }
+tasks.named('runSmokeClient') {
+    doFirst { delete rootProject.file('run-smoke/smoke-passed.txt'), rootProject.file('run-smoke/smoke-failed.txt') }
+    doLast {
+        if (!rootProject.file('run-smoke/smoke-passed.txt').exists() || rootProject.file('run-smoke/smoke-failed.txt').exists()) {
+            throw new GradleException('TAA smoke test failed; inspect run-smoke/logs/latest.log')
+        }
+    }
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    sourceCompatibility = JavaVersion.toVersion(targetJava)
+    targetCompatibility = JavaVersion.toVersion(targetJava)
+    withSourcesJar()
+}
+tasks.withType(JavaCompile).configureEach {
+    options.release = targetJava
+    options.encoding = 'UTF-8'
+}
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'minecraft_version', project.minecraft_version
+    inputs.property 'java_version', targetJava
+    inputs.property 'loader_version', project.loader_version
+    filesMatching(['fabric.mod.json', 'taa.mixins.json']) {
+        expand version: project.version, minecraft_version: project.minecraft_version,
+            java_version: targetJava, loader_version: project.loader_version,
+            mixin_level: (targetJava == 8 ? "JAVA_8" : "JAVA_${targetJava}"),
+            legacy_matrix_mixin: (mcVersion == 11605 ? ', "Matrix4fAccessor"' : ''),
+            legacy_post_mixins: (mcVersion < 12100 ? ', "PostChainMixin", "PostPassMixin"' : '')
+    }
+}
+jar {
+    from(rootProject.file('LICENSE')) { rename { "${it}_${base.archivesName.get()}" } }
+}
+
+
+if (mcVersion != 12108) {
+    afterEvaluate { sourceSets.test.java.setSrcDirs([]); sourceSets.test.resources.setSrcDirs([]) }
+}
+tasks.named('runValidationClient') {
+    def runDirectory = rootProject.file("run-validation/${project.minecraft_version}")
+    doFirst { delete new File(runDirectory, 'validation-passed.txt'), new File(runDirectory, 'validation-failed.txt') }
+    doLast {
+        if (!new File(runDirectory, 'validation-passed.txt').exists() || new File(runDirectory, 'validation-failed.txt').exists()) {
+            throw new GradleException("TAA ${project.minecraft_version} validation failed; inspect ${runDirectory}/logs/latest.log")
+        }
+    }
+}

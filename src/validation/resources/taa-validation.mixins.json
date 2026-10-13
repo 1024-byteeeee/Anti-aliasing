@@ -1,0 +1,6 @@
+{
+  "required": true,
+  "package": "dev.antialiasing.validation.mixin",
+  "client": ["CreateWorldAccessor"],
+  "injectors": {"defaultRequire": 1}
+}

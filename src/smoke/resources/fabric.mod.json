@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "taa_smoke",
+  "version": "1.0.0",
+  "name": "TAA Development Smoke Test",
+  "environment": "client",
+  "entrypoints": {"client": ["dev.antialiasing.smoke.SmokeClient"]},
+  "mixins": ["taa-smoke.mixins.json"],
+  "depends": {"taa": "*"}
+}

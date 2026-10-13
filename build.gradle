@@ -1,0 +1,43 @@
+plugins {
+    id 'base'
+    id 'fabric-loom' version "${fabric_loom_version}" apply false
+    id 'com.replaymod.preprocess' version "${preprocess_version}"
+}
+
+preprocess {
+    mainProjectFile = 'versions/mainProject'
+    strictExtraMappings.set(false)
+    def mc11605 = createNode('1.16.5', 11605, '')
+    def mc11701 = createNode('1.17.1', 11701, '')
+    def mc11802 = createNode('1.18.2', 11802, '')
+    def mc11904 = createNode('1.19.4', 11904, '')
+    def mc12006 = createNode('1.20.6', 12006, '')
+    def mc12108 = createNode('1.21.8', 12108, '')
+    def mc12111 = createNode('1.21.11', 12111, '')
+    mc12111.link(mc12108, file('versions/mapping-1.21.11-1.21.8.txt'))
+    mc12108.link(mc12006, null)
+    mc12006.link(mc11904, null)
+    mc11904.link(mc11802, null)
+    mc11802.link(mc11701, null)
+    mc11701.link(mc11605, null)
+}
+
+tasks.register('buildAndGather', Sync) {
+    group = 'build'
+    description = 'Compile, remap and gather all seven Minecraft releases.'
+    subprojects.each { variant ->
+        dependsOn "${variant.path}:remapJar"
+        from(variant.layout.buildDirectory.dir('libs')) {
+            include '*.jar'
+            exclude '*-sources.jar', '*-dev.jar'
+        }
+    }
+    into layout.buildDirectory.dir('libs')
+}
+
+tasks.named('build') { dependsOn 'buildAndGather' }
+tasks.named('clean') { dependsOn subprojects.collect { "${it.path}:clean" } }
+// Keep existing development commands pointing to the main Minecraft version.
+['runClient', 'runSmokeClient', 'test'].each { command ->
+    tasks.register(command) { dependsOn ":${file('versions/mainProject').text.trim()}:${command}" }
+}
