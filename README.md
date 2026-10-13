@@ -1,8 +1,8 @@
 # Anti-aliasing for Minecraft Fabric
 
-这是一个纯AI且没有规范使用AI制作的项目，觉得好用所以发在Github上面，如果你遇到BUG，可以提交issue我会继续用AI处理
-因为是纯AI且没有规范使用AI的项目，所以我没有能力古法处理BUG，只能继续使用AI处理
-如果您有能力且觉得这是个不错的点子，可以做一个值得信赖的Anti-aliasing
+这是一个纯AI且没有规范使用AI制作的项目，觉得好用所以发在Github上面，如果你遇到BUG，可以提交issue我会继续用AI处理，
+因为是纯AI且没有规范使用AI的项目，所以我没有能力古法处理BUG，只能继续使用AI处理，
+如果您有能力且觉得这是个不错的点子，可以做一个值得信赖的Anti-aliasing，
 只会支持到1.21.11
 
 ## 安装
