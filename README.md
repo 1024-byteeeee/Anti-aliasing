@@ -1,6 +1,9 @@
 # Anti-aliasing for Minecraft Fabric
 
-客户端 Fabric 模组，使用 Mojmap（Mojang 官方映射）。1.0.0 的构建目标为 1.16.5、1.17.1、1.18.2、1.19.4、1.20.6、1.21.8、1.21.11。提供 TAA 与 SSAA 两种抗锯齿模式，SSAA 支持 4×、9×、16×超采样。Java 基础包名为 `dev.antialiasing`。
+这是一个纯AI且没有规范使用AI制作的项目，觉得好用所以发在Github上面，如果你遇到BUG，可以提交issue我会继续用AI处理
+因为是纯AI且没有规范使用AI的项目，所以我没有能力古法处理BUG，只能继续使用AI处理
+如果您有能力且觉得这是个不错的点子，可以做一个值得信赖的Anti-aliasing
+只会支持到1.21.11
 
 ## 安装
 
