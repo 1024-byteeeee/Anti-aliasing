@@ -14,7 +14,7 @@ import java.io.Reader;
 
 public final class TaaConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("taa.json");
+    private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("anti-aliasing.json");
     public boolean enabled = true;
     public int antialiasingMode = 1; // 0: TAA, 1: SSAA
     public int ssaaScale = 2; // Per-axis scale: 2x2, 3x3, 4x4 samples.
@@ -57,7 +57,7 @@ public final class TaaConfig {
 
     public boolean save() {
         sanitize();
-        Path temp = FILE.resolveSibling("taa.json.tmp");
+        Path temp = FILE.resolveSibling("anti-aliasing.json.tmp");
         try {
             Files.createDirectories(FILE.getParent());
             Files.write(temp, GSON.toJson(this).getBytes(StandardCharsets.UTF_8));

@@ -526,7 +526,7 @@ public final class SmokeClient implements ClientModInitializer {
                     TaaConfig saved = TaaConfig.load();
                     require(saved.historyWeight == 0.97 && saved.reduceHistoryOnMotion && saved.sharpening == 0.2 && saved.enabled,
                             "Reference config round trip failed");
-                    require(!Files.readString(mc.gameDirectory.toPath().resolve("config/taa.json")).contains("referenceMode"), "Legacy profile remained in config");
+                    require(!Files.readString(mc.gameDirectory.toPath().resolve("config/anti-aliasing.json")).contains("referenceMode"), "Legacy profile remained in config");
                     mc.player.connection.sendCommand("tp @s 0 106 18 180 12");
                     GLFW.glfwSetWindowSize(mc.getWindow().getWindow(), 1280, 720);
                     setSsaa(2);

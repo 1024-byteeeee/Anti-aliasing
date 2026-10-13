@@ -1,14 +1,14 @@
 # Anti-aliasing for Minecraft Fabric
 
-客户端 Fabric 模组，使用 Mojmap（Mojang 官方映射）。0.6.1 的构建目标为 1.16.5、1.17.1、1.18.2、1.19.4、1.20.6、1.21.8、1.21.11。提供 TAA 与 SSAA 两种抗锯齿模式，SSAA 支持 4×、9×、16×超采样。Java 基础包名为 `dev.antialiasing`。
+客户端 Fabric 模组，使用 Mojmap（Mojang 官方映射）。1.0.0 的构建目标为 1.16.5、1.17.1、1.18.2、1.19.4、1.20.6、1.21.8、1.21.11。提供 TAA 与 SSAA 两种抗锯齿模式，SSAA 支持 4×、9×、16×超采样。Java 基础包名为 `dev.antialiasing`。
 
 ## 安装
 
 1. 安装对应 Minecraft 版本的 Fabric API。Loader 最低版本读取对应 `versions/<版本>/gradle.properties`，未单独指定时为 0.17.2。
-2. 将 `build/libs/anti-aliasing-mc<游戏版本>-0.6.1.jar` 放入对应实例的 `mods`，移除旧版，只安装一个对应版本的 JAR。
+2. 将 `build/libs/anti-aliasing-mc<游戏版本>-1.0.0.jar` 放入对应实例的 `mods`，移除旧版，只安装一个对应版本的 JAR。
 3. 按 F8 或通过“视频设置”打开设置。安装对应游戏版本的可选 Mod Menu 后，也可从模组列表打开配置菜单。
 
-无需服务器安装。新配置默认开启 SSAA 4×，锐化关闭。配置继续使用 `config/taa.json`，升级保留已有参数；已有配置可在设置中点击“恢复默认设置”应用新默认值。
+无需服务器安装。新配置默认开启 SSAA 4×，锐化关闭。配置文件为 `config/anti-aliasing.json`，只读取此文件；已有配置可在设置中点击“恢复默认设置”应用新默认值。
 不会检测 Iris 或 Sodium 的安装状态，也不会因它们已安装而停用 TAA。
 
 ## 设置
@@ -73,5 +73,11 @@ $env:JAVA_HOME = 'C:\Program Files\Zulu\zulu-21' # 改为自己的 JDK 21 路径
 首次构建需要联网下载 Gradle、插件、Minecraft 和 Maven 依赖；依赖完整后可使用 `--offline`。正式配置不依赖 `.work` 或机器上的自定义缓存路径。
 版本列表位于 `minecraftVersions.json`，主版本位于 `versions/mainProject`，公共源码在 `src/main`，旧版本差异在版本目录中。详见 [多版本构建](docs/MULTIVERSION.md)。
 历史游戏验证记录见 [验证记录](docs/VALIDATION.md)。本轮未启动游戏客户端，游戏效果由用户测试；`src/smoke` 和 `src/validation` 不打包进发布模组。
+
+## GitHub Release 自动构建
+
+发布 Release（包括预发布版本）后，`.github/workflows/release.yml` 会检出该 Release 的标签，使用 JDK 21 构建七个版本，并将发布 JAR 上传至该 Release 的 Assets。构建不运行测试，不上传 sources 或 dev JAR；重跑时仅上传尚未存在的同名文件。
+
+发布前将代码推送到 GitHub，更新 `gradle.properties` 中的 `mod_version`，再创建指向包含工作流的提交的标签，例如 `v1.0.0`，并发布对应 Release。草稿状态不会开始构建，无需额外配置个人访问令牌。
 
 许可证 MIT；不捆绑其他渲染模组。
