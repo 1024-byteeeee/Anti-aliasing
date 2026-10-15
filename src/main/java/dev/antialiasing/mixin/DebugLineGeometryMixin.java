@@ -6,7 +6,10 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.vertex.MeshData;
 import dev.antialiasing.render.DebugLineGeometry;
-import net.minecraft.client.renderer.RenderPipelines;
+import dev.antialiasing.render.LineWidthSource;
+import dev.antialiasing.render.SupersampleContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,28 +21,45 @@ import org.spongepowered.asm.mixin.Unique;
 @SuppressWarnings("unused") // Loaded by Mixin configuration at runtime.
 public abstract class DebugLineGeometryMixin {
     @Shadow @Final @Mutable private RenderPipeline renderPipeline;
+    @Shadow @Final private RenderType.CompositeState state;
 
     @WrapMethod(method = "draw")
     private void taa$expandStrip(MeshData mesh, Operation<Void> original) {
-        if (renderPipeline != RenderPipelines.DEBUG_LINE_STRIP || !DebugLineGeometry.supports(mesh)) {
+        if (!DebugLineGeometry.supports(mesh)) {
             original.call(mesh); return;
         }
-        if (DebugLineGeometry.enqueue((RenderType) (Object) this, mesh)) return;
+        float width = DebugLineGeometry.replaying() ? DebugLineGeometry.replayWidth() : taa$pixelWidth();
+        if (DebugLineGeometry.enqueue((RenderType) (Object) this, mesh, width)) return;
         RenderPipeline saved = renderPipeline;
         try {
-            taa$drawExpanded(mesh, original, DebugLineGeometry.currentPipeline());
+            taa$drawExpanded(mesh, width, original, DebugLineGeometry.currentPipeline());
             if (!DebugLineGeometry.replaying())
-                taa$drawExpanded(mesh, original, DebugLineGeometry.DEPTH_PIPELINE);
+                taa$drawExpanded(mesh, width, original, DebugLineGeometry.DEPTH_PIPELINE);
         } finally {
             renderPipeline = saved;
-            // A batched strip remains valid for both the color and depth passes.
+            // flushBatch owns each disposable replay input; its retained snapshot
+            // is never passed through RenderType.draw or other mods' wrappers.
             if (!DebugLineGeometry.replaying()) mesh.close();
         }
     }
 
     @Unique
-    private void taa$drawExpanded(MeshData mesh, Operation<Void> original, RenderPipeline pipeline) {
-        try (MeshData expanded = DebugLineGeometry.expand(mesh)) {
+    private float taa$pixelWidth() {
+        float width = 1;
+        for (RenderStateShard shard : ((CompositeStateAccessor) (Object) state).taa$states()) {
+            if (shard instanceof LineWidthSource source) {
+                width = (float) source.taa$lineWidth().orElseGet(() -> SupersampleContext.withDisplaySize(
+                        () -> Math.max(2.5, Minecraft.getInstance().getWindow().getWidth() / 1920.0 * 2.5)));
+                break;
+            }
+        }
+        if (!Float.isFinite(width) || width <= 0) width = 1;
+        return width * SupersampleContext.lineWidthScale();
+    }
+
+    @Unique
+    private void taa$drawExpanded(MeshData mesh, float width, Operation<Void> original, RenderPipeline pipeline) {
+        try (MeshData expanded = DebugLineGeometry.expand(mesh, width)) {
             if (expanded == null) return;
             renderPipeline = pipeline;
             original.call(expanded);

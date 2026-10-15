@@ -19,6 +19,24 @@ public final class LineMesh implements AutoCloseable {
         return view;
     }
 
+    /** Keep an owned range after the shared debug batch is cleared. */
+    public void copyFrom(LineMesh source, int first, int count) {
+        if (first < 0 || count < 0 || first > source.vertices - count)
+            throw new IllegalArgumentException("Invalid line mesh range");
+        if (count == 0) { clear(); return; }
+        int bytes = Math.multiplyExact(count, STRIDE);
+        ensureCapacity(bytes);
+        MemoryUtil.memCopy(MemoryUtil.memAddress(source.buffer) + (long) first * STRIDE,
+                MemoryUtil.memAddress(buffer), bytes);
+        vertices = count;
+    }
+
+    private void ensureCapacity(int required) {
+        if (buffer == null) buffer = MemoryUtil.memAlloc(Math.max(65536, required));
+        else if (buffer.capacity() < required)
+            buffer = MemoryUtil.memRealloc(buffer, Math.max(required, buffer.capacity() * 2));
+    }
+
     public void line(float x0, float y0, float z0, float x1, float y1, float z1, int color, float width) {
         line(x0, y0, z0, x1, y1, z1, color, color, width);
     }
@@ -40,9 +58,7 @@ public final class LineMesh implements AutoCloseable {
         float dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
         if (dx * dx + dy * dy + dz * dz < 1.0e-12f) return;
         int required = Math.multiplyExact(vertices + 6, STRIDE);
-        if (buffer == null) buffer = MemoryUtil.memAlloc(Math.max(65536, required));
-        else if (buffer.capacity() < required)
-            buffer = MemoryUtil.memRealloc(buffer, Math.max(required, buffer.capacity() * 2));
+        ensureCapacity(required);
         long address = MemoryUtil.memAddress(buffer) + (long) vertices * STRIDE;
         for (int i = 0; i < 6; i++, address += STRIDE) {
             MemoryUtil.memPutFloat(address, x0); MemoryUtil.memPutFloat(address + 4, y0); MemoryUtil.memPutFloat(address + 8, z0);

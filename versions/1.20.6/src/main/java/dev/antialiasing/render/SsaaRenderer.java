@@ -69,7 +69,7 @@ public final class SsaaRenderer implements AutoCloseable {
         failed = true; active = false; SupersampleContext.end(); releaseTargets();
     }
     private void releaseTargets() {
-        if (high != null) { high.destroyBuffers(); high = null; }
+        if (high != null) { DebugLineGeometry.releaseLayer(); high.destroyBuffers(); high = null; }
         if (horizontal != null) { horizontal.destroyBuffers(); horizontal = null; }
         if (resolved != null) { resolved.destroyBuffers(); resolved = null; }
     }

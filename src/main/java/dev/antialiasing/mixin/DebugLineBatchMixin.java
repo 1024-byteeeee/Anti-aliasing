@@ -49,8 +49,14 @@ public abstract class DebugLineBatchMixin {
             //#endif
             //#endif
             DebugLineGeometry.flushBatch();
+            //#if MC>=12100
+            dev.antialiasing.render.ModernChunkBorders.render();
+            //#endif
         } finally {
             DebugLineGeometry.discardBatch();
+            //#if MC>=12100
+            dev.antialiasing.render.ModernChunkBorders.discard();
+            //#endif
         }
     }
 }

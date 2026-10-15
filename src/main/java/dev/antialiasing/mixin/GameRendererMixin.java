@@ -31,6 +31,7 @@ public abstract class GameRendererMixin {
     //#endif
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void taa$begin(DeltaTracker delta, CallbackInfo ci) {
+        dev.antialiasing.render.ModernChunkBorders.beginFrame();
         TaaClient.SSAA.beginFrame();
         if (TaaClient.SSAA.isActive()) taa$updateGlobals(delta);
         TaaClient.RENDERER.beginFrame();
@@ -58,7 +59,10 @@ public abstract class GameRendererMixin {
     }
 
     @Inject(method = "renderLevel", at = @At(value = "INVOKE", target = WORLD_RENDER, shift = At.Shift.AFTER))
-    private void taa$saveWorldDepth(DeltaTracker delta, CallbackInfo ci) { TaaClient.RENDERER.saveWorldDepth(); }
+    private void taa$saveWorldDepth(DeltaTracker delta, CallbackInfo ci) {
+        dev.antialiasing.render.ModernChunkBorders.repaintAfterWorld();
+        TaaClient.RENDERER.saveWorldDepth();
+    }
 
     @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/CachedPerspectiveProjectionMatrixBuffer;getBuffer(IIF)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"))
     private GpuBufferSlice taa$handProjection(CachedPerspectiveProjectionMatrixBuffer buffer, int width, int height,

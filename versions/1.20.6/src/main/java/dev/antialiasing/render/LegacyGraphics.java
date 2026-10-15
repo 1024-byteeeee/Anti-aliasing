@@ -16,7 +16,32 @@ import java.nio.charset.StandardCharsets;
 
 /** OpenGL backend for versions preceding Minecraft's GPU abstraction. */
 final class LegacyGraphics implements AutoCloseable {
-    private int resolve, residual, present, downsample, guiPresent, vao, data, filterData;
+    private int resolve, residual, present, downsample, guiPresent, lineComposite, lineOutput, vao, data, filterData;
+
+    void compositeLines(RenderTarget destination, RenderTarget layer) {
+        if (lineComposite == 0) {
+            lineComposite = program("debug_line_composite", false);
+            if (vao == 0) vao = GL30.glGenVertexArrays();
+        }
+        if (lineOutput == 0) lineOutput = GL30.glGenFramebuffers();
+        begin(lineComposite, destination, false);
+        // A private color-only FBO avoids sampling an attached depth texture.
+        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, lineOutput);
+        GL30.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
+                GL11.GL_TEXTURE_2D, destination.getColorTextureId(), 0);
+        GL11.glDrawBuffer(GL30.GL_COLOR_ATTACHMENT0);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL20.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+        GL14.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        sampler(lineComposite, "LineColor", 0, layer.getColorTextureId());
+        sampler(lineComposite, "LineDepth", 1, layer.getDepthTextureId());
+        sampler(lineComposite, "SceneDepth", 2, destination.getDepthTextureId());
+        GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+    }
+
+    void releaseLineOutput() {
+        if (lineOutput != 0) { GL30.glDeleteFramebuffers(lineOutput); lineOutput = 0; }
+    }
 
     void initGui() {
         if (vao != 0) return;
@@ -176,7 +201,7 @@ final class LegacyGraphics implements AutoCloseable {
             GL20.glLinkProgram(program);
             if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) == 0)
                 throw new IllegalStateException(GL20.glGetProgramInfoLog(program));
-            if (!name.equals("gui_present")) {
+            if (!name.equals("gui_present") && !name.equals("debug_line_composite")) {
                 int block = GL31.glGetUniformBlockIndex(program, name.equals("ssaa_downsample") ? "SsaaData" : "TaaData");
                 GL31.glUniformBlockBinding(program, block, 0);
             }
@@ -196,11 +221,12 @@ final class LegacyGraphics implements AutoCloseable {
     }
 
     @Override public void close() {
-        for (int program : new int[]{resolve, residual, present, downsample, guiPresent}) if (program != 0) GL20.glDeleteProgram(program);
+        for (int program : new int[]{resolve, residual, present, downsample, guiPresent, lineComposite}) if (program != 0) GL20.glDeleteProgram(program);
+        if (lineOutput != 0) GL30.glDeleteFramebuffers(lineOutput);
         if (vao != 0) GL30.glDeleteVertexArrays(vao);
         if (data != 0) GL15.glDeleteBuffers(data);
         if (filterData != 0) GL15.glDeleteBuffers(filterData);
-        resolve = residual = present = downsample = guiPresent = vao = data = filterData = 0;
+        resolve = residual = present = downsample = guiPresent = lineComposite = lineOutput = vao = data = filterData = 0;
     }
 
     /** Restore actual GL bindings and Minecraft's cached texture bindings after every pass. */

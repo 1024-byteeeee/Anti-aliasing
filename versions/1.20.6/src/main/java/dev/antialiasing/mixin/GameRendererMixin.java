@@ -39,7 +39,10 @@ public abstract class GameRendererMixin {
     //$$ private static final String UPLOAD = "Lnet/minecraft/client/renderer/GameRenderer;resetProjectionMatrix(Lcom/mojang/math/Matrix4f;)V";
     //#endif
     @Inject(method = "renderLevel", at = @At("HEAD"))
-    private void taa$begin(CallbackInfo ci) { TaaClient.SSAA.beginFrame(); TaaClient.RENDERER.beginFrame(); }
+    private void taa$begin(CallbackInfo ci) {
+        dev.antialiasing.render.DebugLineGeometry.beginFrame();
+        TaaClient.SSAA.beginFrame(); TaaClient.RENDERER.beginFrame();
+    }
     @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = UPLOAD))
     private void taa$jitter(GameRenderer renderer, Matrix4f matrix, Operation<Void> original) {
         original.call(renderer, taa$projection(matrix, false));
@@ -81,7 +84,10 @@ public abstract class GameRendererMixin {
         //#endif
     }
     @Inject(method = "renderLevel", at = @At(value = "INVOKE", target = WORLD, shift = At.Shift.AFTER))
-    private void taa$worldDepth(CallbackInfo ci) { TaaClient.RENDERER.saveWorldDepth(); }
+    private void taa$worldDepth(CallbackInfo ci) {
+        dev.antialiasing.render.DebugLineGeometry.repaintAfterWorld();
+        TaaClient.RENDERER.saveWorldDepth();
+    }
     // Vanilla clears depth here immediately before switching to the HUD projection.
     @Inject(method = "render", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;clear(IZ)V", ordinal = 0))
     private void taa$resolve(CallbackInfo ci) { TaaClient.RENDERER.resolve(); TaaClient.SSAA.finishFrame(); }

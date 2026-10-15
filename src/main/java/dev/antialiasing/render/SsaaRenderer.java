@@ -149,7 +149,7 @@ public final class SsaaRenderer implements AutoCloseable {
         releaseTargets();
     }
     private void releaseTargets() {
-        if (high != null) { high.destroyBuffers(); high = null; }
+        if (high != null) { ModernChunkBorders.releaseLayer(); high.destroyBuffers(); high = null; }
         if (horizontal != null) { horizontal.destroyBuffers(); horizontal = null; }
         if (resolved != null) { resolved.destroyBuffers(); resolved = null; }
     }

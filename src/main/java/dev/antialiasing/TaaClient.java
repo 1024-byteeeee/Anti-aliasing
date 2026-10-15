@@ -72,6 +72,9 @@ public final class TaaClient implements ClientModInitializer {
     private static void closeDebugLines() {
         //#if MC<12109
         dev.antialiasing.render.DebugLineGeometry.close();
+        //#if MC>=12100
+        dev.antialiasing.render.ModernChunkBorders.close();
+        //#endif
         //#else
         //$$ dev.antialiasing.render.ModernChunkBorders.close();
         //#endif
