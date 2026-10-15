@@ -1,6 +1,8 @@
 package dev.antialiasing.mixin;
 
 import dev.antialiasing.TaaClient;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.GameRenderer;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -17,12 +19,12 @@ import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(GameRenderer.class)
+@SuppressWarnings("unused") // Loaded by Mixin configuration at runtime.
 public abstract class GameRendererMixin {
     //#if MC>=12005
     private static final String WORLD = "Lnet/minecraft/client/renderer/LevelRenderer;renderLevel(FJZLnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/GameRenderer;Lnet/minecraft/client/renderer/LightTexture;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;)V";
@@ -38,10 +40,14 @@ public abstract class GameRendererMixin {
     //#endif
     @Inject(method = "renderLevel", at = @At("HEAD"))
     private void taa$begin(CallbackInfo ci) { TaaClient.SSAA.beginFrame(); TaaClient.RENDERER.beginFrame(); }
-    @ModifyArg(method = "renderLevel", at = @At(value = "INVOKE", target = UPLOAD), index = 0)
-    private Matrix4f taa$jitter(Matrix4f matrix) { return taa$projection(matrix, false); }
-    @ModifyArg(method = "renderItemInHand", at = @At(value = "INVOKE", target = UPLOAD), index = 0)
-    private Matrix4f taa$hand(Matrix4f matrix) { return taa$projection(matrix, true); }
+    @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = UPLOAD))
+    private void taa$jitter(GameRenderer renderer, Matrix4f matrix, Operation<Void> original) {
+        original.call(renderer, taa$projection(matrix, false));
+    }
+    @WrapOperation(method = "renderItemInHand", at = @At(value = "INVOKE", target = UPLOAD))
+    private void taa$hand(GameRenderer renderer, Matrix4f matrix, Operation<Void> original) {
+        original.call(renderer, taa$projection(matrix, true));
+    }
     private static Matrix4f taa$projection(Matrix4f matrix, boolean hand) {
         //#if MC>=11903
         return hand ? TaaClient.RENDERER.jitterHand(matrix) : TaaClient.RENDERER.jitter(matrix);

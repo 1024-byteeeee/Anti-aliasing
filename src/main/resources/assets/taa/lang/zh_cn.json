@@ -1,5 +1,11 @@
 {
   "taa.title": "抗锯齿设置",
+  "taa.line.width": "线宽倍率",
+  "taa.line.width.apply": "应用线宽倍率",
+  "taa.line.width.tooltip": "SSAA 线宽倍率：0.1～4.0，默认 1.0。0.5 为半宽，2.0 为双倍宽。点击应用或完成时生效。",
+  "taa.line.width.invalid": "线宽倍率请输入 0.1～4.0 的数字",
+  "taa.gui.entity": "界面实体抗锯齿：%s",
+  "taa.gui.entity.tooltip": "为背包角色等原版界面实体预览应用 SSAA，倍率跟随 SSAA 设置。文字和物品图标保持原样。",
   "taa.video.button": "抗锯齿",
   "taa.sharpen.mode": "锐化：%s",
   "taa.sharpen.mode.0": "关闭",

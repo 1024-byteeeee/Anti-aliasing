@@ -117,14 +117,21 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 processResources {
+    def debugGeometryMixins = mcVersion == 12108 ? ', "DebugLineGeometryMixin", "DebugLineBatchMixin"' :
+            mcVersion < 12100 ? ', "LegacyDebugLineMixin", "DebugLineBatchMixin"' : ', "GizmoChunkRenderMixin"'
+    if (mcVersion < 11900 || mcVersion >= 12109) debugGeometryMixins += ', "ChunkBorderMixin"'
     inputs.property 'version', project.version
     inputs.property 'minecraft_version', project.minecraft_version
     inputs.property 'java_version', targetJava
     inputs.property 'loader_version', project.loader_version
+    inputs.property 'debug_geometry_mixin', debugGeometryMixins
     filesMatching(['fabric.mod.json', 'taa.mixins.json']) {
         expand version: project.version, minecraft_version: project.minecraft_version,
             java_version: targetJava, loader_version: project.loader_version,
             mixin_level: (targetJava == 8 ? "JAVA_8" : "JAVA_${targetJava}"),
+            gui_renderer_mixin: (mcVersion >= 12100 ? ', "GuiRendererMixin"' : ''),
+            line_state_mixin: (mcVersion < 12109 ? ', "LineStateMixin"' : ''),
+            debug_geometry_mixin: debugGeometryMixins,
             legacy_matrix_mixin: (mcVersion == 11605 ? ', "Matrix4fAccessor"' : ''),
             legacy_post_mixins: (mcVersion < 12100 ? ', "PostChainMixin", "PostPassMixin"' : '')
     }

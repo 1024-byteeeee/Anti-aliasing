@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @Mixin(PostChain.class)
+@SuppressWarnings("unused") // Loaded by Mixin configuration at runtime.
 public abstract class PostChainMixin {
     @Shadow @Final @Mutable private RenderTarget screenTarget;
     @Shadow @Final private List<PostPass> passes;

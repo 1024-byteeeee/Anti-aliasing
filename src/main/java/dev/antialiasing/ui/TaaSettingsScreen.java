@@ -1,6 +1,7 @@
 package dev.antialiasing.ui;
 
 import dev.antialiasing.TaaClient;
+import dev.antialiasing.config.TaaConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
@@ -17,8 +18,8 @@ import java.util.Locale;
 public final class TaaSettingsScreen extends OptionsSubScreen {
     private StrengthSlider strength;
     private HistorySlider history;
-    private EditBox samples;
-    private Button enabled, mode, debug, done, motion, algorithm, ssaaScale, apply, clear;
+    private EditBox samples, lineWidth;
+    private Button enabled, mode, debug, done, motion, algorithm, ssaaScale, apply, clear, guiEntity, applyLineWidth;
     private String lastStatus;
     private StringWidget note, heading, status;
     private boolean dirty;
@@ -34,10 +35,12 @@ public final class TaaSettingsScreen extends OptionsSubScreen {
     }
     @Override protected void init() {
         String pending = samples == null ? Integer.toString(TaaClient.CONFIG.sampleCount) : samples.getValue();
+        String pendingWidth = lineWidth == null ? Double.toString(TaaClient.CONFIG.ssaaLineWidthMultiplier) : lineWidth.getValue();
         // Do not add new children to OptionsSubScreen's persistent layout on every init.
         list = addRenderableWidget(new OptionsList(minecraft, width, this));
         addOptions();
         samples.setValue(pending);
+        lineWidth.setValue(pendingWidth);
         heading = addRenderableWidget(new StringWidget(310, 20, title, font));
         done = addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).width(200).build());
         repositionElements();
@@ -63,6 +66,7 @@ public final class TaaSettingsScreen extends OptionsSubScreen {
             motion.setMessage(motionLabel());
             status.setMessage(Component.translatable(TaaClient.statusKey()));
             history.refresh(); strength.refresh(); samples.setValue(Integer.toString(config.sampleCount));
+            lineWidth.setValue(Double.toString(config.ssaaLineWidthMultiplier));
             refreshAlgorithm();
         }).build());
         algorithm = Button.builder(algorithmLabel(), b -> {
@@ -74,6 +78,18 @@ public final class TaaSettingsScreen extends OptionsSubScreen {
             TaaClient.SSAA.reset(); changed(); refreshAlgorithm();
         }).tooltip(Tooltip.create(Component.translatable("taa.ssaa.tooltip"))).build();
         list.addSmall(algorithm, ssaaScale);
+        guiEntity = Button.builder(guiEntityLabel(), b -> {
+            config.guiEntityAntialiasing = !config.guiEntityAntialiasing;
+            TaaClient.GUI_SSAA.reset(); changed(); refreshAlgorithm();
+        }).width(310).tooltip(Tooltip.create(Component.translatable("taa.gui.entity.tooltip"))).build();
+        list.addSmall(guiEntity, null);
+        lineWidth = new EditBox(font, 0, 0, 150, 20, Component.translatable("taa.line.width"));
+        lineWidth.setMaxLength(6);
+        lineWidth.setFilter(text -> text.chars().allMatch(c -> (c >= '0' && c <= '9') || c == '.'));
+        lineWidth.setHint(Component.literal("1.0"));
+        lineWidth.setTooltip(Tooltip.create(Component.translatable("taa.line.width.tooltip")));
+        applyLineWidth = Button.builder(Component.translatable("taa.line.width.apply"), b -> applyLineWidth()).build();
+        list.addSmall(lineWidth, applyLineWidth);
         history = new HistorySlider();
         list.addSmall(history, null);
         motion = Button.builder(motionLabel(), b -> {
@@ -117,6 +133,8 @@ public final class TaaSettingsScreen extends OptionsSubScreen {
         boolean temporal = TaaClient.CONFIG.antialiasingMode == 0;
         algorithm.setMessage(algorithmLabel()); ssaaScale.setMessage(ssaaLabel());
         ssaaScale.active = !temporal;
+        guiEntity.setMessage(guiEntityLabel()); guiEntity.active = !temporal;
+        lineWidth.active = !temporal; lineWidth.setEditable(!temporal); applyLineWidth.active = !temporal;
         history.active = temporal; motion.active = temporal; samples.active = temporal;
         samples.setEditable(temporal);
         apply.active = temporal; debug.active = temporal; clear.active = temporal;
@@ -143,11 +161,29 @@ public final class TaaSettingsScreen extends OptionsSubScreen {
             return false;
         }
     }
+    private boolean applyLineWidth() {
+        try {
+            double value = TaaConfig.parseLineWidthMultiplier(lineWidth.getValue());
+            if (value != TaaClient.CONFIG.ssaaLineWidthMultiplier) {
+                TaaClient.CONFIG.ssaaLineWidthMultiplier = value; changed();
+            }
+            lineWidth.setValue(Double.toString(value));
+            note.setMessage(Component.translatable("taa.note"));
+            return true;
+        } catch (NumberFormatException e) {
+            note.setMessage(Component.translatable("taa.line.width.invalid"));
+            lineWidth.setFocused(true); setFocused(lineWidth);
+            return false;
+        }
+    }
     private Component enabledLabel() {
         return Component.translatable("taa.enabled", Component.translatable(TaaClient.CONFIG.enabled ? "options.on" : "options.off"));
     }
     private Component sharpenLabel() {
         return Component.translatable("taa.sharpen.mode", Component.translatable("taa.sharpen.mode." + TaaClient.CONFIG.sharpeningMode));
+    }
+    private Component guiEntityLabel() {
+        return Component.translatable("taa.gui.entity", Component.translatable(TaaClient.CONFIG.guiEntityAntialiasing ? "options.on" : "options.off"));
     }
     private Component motionLabel() {
         return Component.translatable("taa.motion", Component.translatable(TaaClient.CONFIG.reduceHistoryOnMotion ? "options.on" : "options.off"));
@@ -163,7 +199,11 @@ public final class TaaSettingsScreen extends OptionsSubScreen {
             if (note != null) note.setMessage(Component.translatable(success ? "taa.note" : "taa.save.failed"));
         }
     }
-    @Override public void onClose() { if (TaaClient.CONFIG.antialiasingMode == 1 || applySamples()) { save(); if (!dirty) super.onClose(); } }
+    @Override public void onClose() {
+        if (TaaClient.CONFIG.antialiasingMode == 1 ? applyLineWidth() : applySamples()) {
+            save(); if (!dirty) super.onClose();
+        }
+    }
     @Override public void removed() { save(); super.removed(); }
     private final class HistorySlider extends AbstractSliderButton {
         HistorySlider() { super(0, 0, 310, 20, Component.empty(), 0); refresh(); setTooltip(Tooltip.create(Component.translatable("taa.history.tooltip"))); }

@@ -1,6 +1,8 @@
 package dev.antialiasing.mixin;
 
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import dev.antialiasing.render.PostPassTargets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.PostPass;
@@ -11,12 +13,12 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.List;
 import java.util.function.IntSupplier;
 
 @Mixin(PostPass.class)
+@SuppressWarnings("unused") // Loaded by Mixin configuration at runtime.
 public abstract class PostPassMixin implements PostPassTargets {
     @Shadow @Final @Mutable public RenderTarget inTarget;
     @Shadow @Final @Mutable public RenderTarget outTarget;
@@ -35,15 +37,15 @@ public abstract class PostPassMixin implements PostPassTargets {
 
     // Vanilla captures target::getTextureId while parsing a chain. Resolve main
     // textures at draw time so changing SSAA scale cannot leave a stale target.
-    @ModifyVariable(method = "addAuxAsset", at = @At("HEAD"), argsOnly = true)
-    private IntSupplier taa$dynamicMainSampler(IntSupplier supplier) {
+    @WrapMethod(method = "addAuxAsset")
+    private void taa$dynamicMainSampler(String name, IntSupplier supplier, int width, int height, Operation<Void> original) {
         RenderTarget main = Minecraft.getInstance().getMainRenderTarget();
         int texture = supplier.getAsInt();
         if (texture >= 0 && texture == main.getColorTextureId())
-            return () -> Minecraft.getInstance().getMainRenderTarget().getColorTextureId();
-        if (texture >= 0 && texture == main.getDepthTextureId())
-            return () -> Minecraft.getInstance().getMainRenderTarget().getDepthTextureId();
-        return supplier;
+            supplier = () -> Minecraft.getInstance().getMainRenderTarget().getColorTextureId();
+        else if (texture >= 0 && texture == main.getDepthTextureId())
+            supplier = () -> Minecraft.getInstance().getMainRenderTarget().getDepthTextureId();
+        original.call(name, supplier, width, height);
     }
 
     @Inject(method = "process", at = @At("HEAD"))

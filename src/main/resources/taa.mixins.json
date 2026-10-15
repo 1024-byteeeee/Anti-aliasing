@@ -2,6 +2,6 @@
   "required": true,
   "package": "dev.antialiasing.mixin",
   "compatibilityLevel": "${mixin_level}",
-  "client": ["GameRendererMixin", "MinecraftMixin", "WindowMixin", "LevelRendererMixin", "VideoSettingsScreenMixin"${legacy_matrix_mixin}${legacy_post_mixins}],
+  "client": ["GameRendererMixin", "MinecraftMixin", "WindowMixin", "LevelRendererMixin", "VideoSettingsScreenMixin", "LineWidthMixin", "GuiEntityMixin"${line_state_mixin}${debug_geometry_mixin}${gui_renderer_mixin}${legacy_matrix_mixin}${legacy_post_mixins}],
   "injectors": {"defaultRequire": 1}
 }

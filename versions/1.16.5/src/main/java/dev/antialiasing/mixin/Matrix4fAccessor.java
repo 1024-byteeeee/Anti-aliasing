@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 import java.nio.FloatBuffer;
 
 @Mixin(Matrix4f.class)
+@SuppressWarnings("unused") // Loaded by Mixin configuration at runtime.
 public interface Matrix4fAccessor {
     @Accessor("m00") void taa$m00(float value);
     @Accessor("m01") void taa$m01(float value);

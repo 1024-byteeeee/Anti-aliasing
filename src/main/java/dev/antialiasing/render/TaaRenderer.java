@@ -14,7 +14,6 @@ import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
 import com.mojang.blaze3d.textures.AddressMode;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
-import net.minecraft.client.renderer.CachedPerspectiveProjectionMatrixBuffer;
 import net.minecraft.client.renderer.PerspectiveProjectionMatrixBuffer;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -205,8 +204,8 @@ public final class TaaRenderer implements AutoCloseable {
         } catch (RuntimeException e) { fail(e); }
     }
 
-    public GpuBufferSlice handProjection(CachedPerspectiveProjectionMatrixBuffer original, int width, int height, float fov) {
-        if (!activeFrame) return original.getBuffer(width, height, fov);
+    public GpuBufferSlice handProjection(GpuBufferSlice original, int width, int height, float fov) {
+        if (!activeFrame) return original;
         // Matches vanilla's HUD 3D near/far planes. Camera rotation cancels in the hand pose.
         handVP.setPerspective((float) Math.toRadians(fov), (float) width / height, 0.05f, 100.0f);
         handCaptured = true;

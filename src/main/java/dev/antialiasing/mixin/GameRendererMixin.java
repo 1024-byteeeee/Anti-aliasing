@@ -2,6 +2,8 @@ package dev.antialiasing.mixin;
 
 import dev.antialiasing.TaaClient;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.GameRenderer;
@@ -10,16 +12,16 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlobalSettingsUniform;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import net.minecraft.client.renderer.CachedPerspectiveProjectionMatrixBuffer;
+import net.minecraft.client.renderer.PerspectiveProjectionMatrixBuffer;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(GameRenderer.class)
+@SuppressWarnings("unused") // Loaded by Mixin configuration at runtime.
 public abstract class GameRendererMixin {
     @Shadow private GlobalSettingsUniform globalSettingsUniform;
     //#if MC>=12109
@@ -45,8 +47,10 @@ public abstract class GameRendererMixin {
         //#endif
     }
 
-    @ModifyArg(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/PerspectiveProjectionMatrixBuffer;getBuffer(Lorg/joml/Matrix4f;)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"), index = 0)
-    private Matrix4f taa$jitter(Matrix4f matrix) { return TaaClient.RENDERER.jitter(matrix); }
+    @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/PerspectiveProjectionMatrixBuffer;getBuffer(Lorg/joml/Matrix4f;)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"))
+    private GpuBufferSlice taa$jitter(PerspectiveProjectionMatrixBuffer buffer, Matrix4f matrix, Operation<GpuBufferSlice> original) {
+        return original.call(buffer, TaaClient.RENDERER.jitter(matrix));
+    }
 
     @ModifyArgs(method = "renderLevel", at = @At(value = "INVOKE", target = WORLD_RENDER))
     private void taa$capture(Args args) {
@@ -56,9 +60,11 @@ public abstract class GameRendererMixin {
     @Inject(method = "renderLevel", at = @At(value = "INVOKE", target = WORLD_RENDER, shift = At.Shift.AFTER))
     private void taa$saveWorldDepth(DeltaTracker delta, CallbackInfo ci) { TaaClient.RENDERER.saveWorldDepth(); }
 
-    @Redirect(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/CachedPerspectiveProjectionMatrixBuffer;getBuffer(IIF)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"))
-    private GpuBufferSlice taa$handProjection(CachedPerspectiveProjectionMatrixBuffer original, int width, int height, float fov) {
-        return TaaClient.RENDERER.handProjection(original, width, height, fov);
+    @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/CachedPerspectiveProjectionMatrixBuffer;getBuffer(IIF)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"))
+    private GpuBufferSlice taa$handProjection(CachedPerspectiveProjectionMatrixBuffer buffer, int width, int height,
+                                             float fov, Operation<GpuBufferSlice> original) {
+        GpuBufferSlice projection = original.call(buffer, width, height, fov);
+        return TaaClient.RENDERER.handProjection(projection, width, height, fov);
     }
 
     // Includes hands, screen effects, debug geometry, entity outlines and vanilla post effects.

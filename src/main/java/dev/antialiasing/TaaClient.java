@@ -3,6 +3,7 @@ package dev.antialiasing;
 import dev.antialiasing.config.TaaConfig;
 import dev.antialiasing.render.TaaRenderer;
 import dev.antialiasing.render.SsaaRenderer;
+import dev.antialiasing.render.GuiEntityAntialiasing;
 import dev.antialiasing.ui.TaaSettingsScreen;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -34,6 +35,7 @@ public final class TaaClient implements ClientModInitializer {
     public static TaaConfig CONFIG;
     public static final TaaRenderer RENDERER = new TaaRenderer();
     public static final SsaaRenderer SSAA = new SsaaRenderer();
+    public static final GuiEntityAntialiasing GUI_SSAA = new GuiEntityAntialiasing();
     @Override public void onInitializeClient() {
         CONFIG = TaaConfig.load();
         //#if MC>=12109
@@ -47,8 +49,9 @@ public final class TaaClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (settings.consumeClick()) openSettings(client.screen);
             if (client.level == null) { RENDERER.invalidate(); SSAA.reset(); }
+            if (client.screen == null || !CONFIG.enabled || CONFIG.antialiasingMode != 1 || !CONFIG.guiEntityAntialiasing) GUI_SSAA.close();
         });
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> { RENDERER.close(); SSAA.close(); });
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> { RENDERER.close(); SSAA.close(); GUI_SSAA.close(); closeDebugLines(); });
         ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
             @Override public ResourceLocation getFabricId() {
                 //#if MC>=12100
@@ -57,7 +60,7 @@ public final class TaaClient implements ClientModInitializer {
                 //$$ return new ResourceLocation("taa", "reload");
                 //#endif
             }
-            @Override public void onResourceManagerReload(ResourceManager manager) { RENDERER.reload(); SSAA.reset(); }
+            @Override public void onResourceManagerReload(ResourceManager manager) { RENDERER.reload(); SSAA.reset(); GUI_SSAA.reset(); closeDebugLines(); }
         });
         LOGGER.info("Anti-aliasing initialized (Mojmap)");
     }
@@ -66,4 +69,11 @@ public final class TaaClient implements ClientModInitializer {
         if (!(client.screen instanceof TaaSettingsScreen)) client.setScreen(TaaSettingsScreen.forParent(parent));
     }
     public static String statusKey() { return CONFIG.antialiasingMode == 1 ? SSAA.statusKey() : RENDERER.statusKey(); }
+    private static void closeDebugLines() {
+        //#if MC<12109
+        dev.antialiasing.render.DebugLineGeometry.close();
+        //#else
+        //$$ dev.antialiasing.render.ModernChunkBorders.close();
+        //#endif
+    }
 }

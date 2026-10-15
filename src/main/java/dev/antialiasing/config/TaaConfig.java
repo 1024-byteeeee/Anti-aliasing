@@ -18,6 +18,8 @@ public final class TaaConfig {
     public boolean enabled = true;
     public int antialiasingMode = 1; // 0: TAA, 1: SSAA
     public int ssaaScale = 2; // Per-axis scale: 2x2, 3x3, 4x4 samples.
+    public boolean guiEntityAntialiasing = true;
+    public double ssaaLineWidthMultiplier = 1.0;
     @SerializedName(value = "historyWeight", alternate = {"referenceWeight"})
     public double historyWeight = 0.97;
     public boolean reduceHistoryOnMotion = true;
@@ -43,6 +45,7 @@ public final class TaaConfig {
     public void sanitize() {
         if (antialiasingMode < 0 || antialiasingMode > 1) antialiasingMode = 1;
         ssaaScale = Math.max(2, Math.min(4, ssaaScale));
+        ssaaLineWidthMultiplier = finiteClamp(ssaaLineWidthMultiplier, 1.0, 0.1, 4.0);
         historyWeight = finiteClamp(historyWeight, 0.97, 0, 1);
         sharpening = finiteClamp(sharpening, 0.2, 0, 1);
         sampleCount = Math.max(1, Math.min(256, sampleCount));
@@ -53,6 +56,12 @@ public final class TaaConfig {
 
     private static double finiteClamp(double value, double fallback, double min, double max) {
         return Double.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+    }
+
+    public static double parseLineWidthMultiplier(String text) {
+        double value = Double.parseDouble(text);
+        if (!Double.isFinite(value) || value < 0.1 || value > 4.0) throw new NumberFormatException();
+        return value;
     }
 
     public boolean save() {
@@ -76,6 +85,8 @@ public final class TaaConfig {
         enabled = true;
         antialiasingMode = 1;
         ssaaScale = 2;
+        guiEntityAntialiasing = true;
+        ssaaLineWidthMultiplier = 1.0;
         resetTemporalValues();
         debugView = 0;
     }

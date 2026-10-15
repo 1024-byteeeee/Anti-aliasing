@@ -20,7 +20,7 @@ import java.util.OptionalInt;
 
 public final class SsaaRenderer implements AutoCloseable {
     private static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath("taa", path); }
-    private static final RenderPipeline DOWNSAMPLE = RenderPipelines.register(RenderPipeline.builder()
+    static final RenderPipeline DOWNSAMPLE = RenderPipelines.register(RenderPipeline.builder()
             .withLocation(id("pipeline/ssaa_downsample"))
             .withVertexShader(id("core/fullscreen")).withFragmentShader(id("core/ssaa_downsample"))
             .withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES)
@@ -112,10 +112,14 @@ public final class SsaaRenderer implements AutoCloseable {
     }
 
     private void filter(GpuTextureView source, RenderTarget output, boolean vertical) {
+        filter(source, output, vertical, scale, downsampleData, false);
+    }
+
+    static void filter(GpuTextureView source, RenderTarget output, boolean vertical, int scale, GpuBuffer uniforms, boolean alpha) {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             ByteBuffer data = stack.calloc(16);
-            data.putFloat(0, scale).putFloat(4, vertical ? 1 : 0);
-            RenderSystem.getDevice().createCommandEncoder().writeToBuffer(downsampleData.slice(), data);
+            data.putFloat(0, scale).putFloat(4, vertical ? 1 : 0).putFloat(8, alpha ? 1 : 0);
+            RenderSystem.getDevice().createCommandEncoder().writeToBuffer(uniforms.slice(), data);
         }
         try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
                 () -> "SSAA Lanczos reconstruction", output.getColorTextureView(), OptionalInt.empty())) {
@@ -123,7 +127,7 @@ public final class SsaaRenderer implements AutoCloseable {
             //#if MC<12109
             pass.setVertexBuffer(0, RenderSystem.getQuadVertexBuffer());
             //#endif
-            pass.setUniform("SsaaData", downsampleData);
+            pass.setUniform("SsaaData", uniforms);
             TaaRenderer.bind(pass, "SourceColor", source);
             pass.draw(0, 3);
         }

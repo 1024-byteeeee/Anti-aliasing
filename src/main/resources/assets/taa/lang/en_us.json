@@ -1,4 +1,10 @@
 {
+  "taa.line.width": "Line width multiplier",
+  "taa.line.width.apply": "Apply line width",
+  "taa.line.width.tooltip": "SSAA line width multiplier: 0.1 to 4.0, default 1.0. 0.5 halves the width; 2.0 doubles it. Apply or Done commits the value.",
+  "taa.line.width.invalid": "Enter a line width multiplier from 0.1 to 4.0",
+  "taa.gui.entity": "GUI entity antialiasing: %s",
+  "taa.gui.entity.tooltip": "Apply SSAA to inventory characters and vanilla GUI entity previews using the selected SSAA scale. Text and item icons stay unchanged.",
   "taa.title": "Anti-aliasing Settings",
   "taa.video.button": "Anti-aliasing",
   "taa.sharpen.mode": "Sharpening: %s",

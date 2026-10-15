@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(VideoSettingsScreen.class)
+@SuppressWarnings("unused") // Loaded by Mixin configuration at runtime.
 public abstract class VideoSettingsScreenMixin extends OptionsSubScreen {
     protected VideoSettingsScreenMixin(Screen parent, Options options, Component title) { super(parent, options, title); }
     @Inject(method = "addOptions", at = @At("TAIL"))

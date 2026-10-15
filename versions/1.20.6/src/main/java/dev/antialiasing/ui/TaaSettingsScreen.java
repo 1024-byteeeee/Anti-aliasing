@@ -1,6 +1,7 @@
 package dev.antialiasing.ui;
 
 import dev.antialiasing.TaaClient;
+import dev.antialiasing.config.TaaConfig;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -25,8 +26,8 @@ public final class TaaSettingsScreen extends Screen {
     private final Screen lastScreen;
     private final List<AbstractWidget> controls = new ArrayList<>();
     private final List<Integer> rows = new ArrayList<>(), columns = new ArrayList<>();
-    private EditBox samples;
-    private Button enabled, algorithm, scale, motion, mode, debug, apply, clear;
+    private EditBox samples, lineWidth;
+    private Button enabled, algorithm, scale, motion, mode, debug, apply, clear, guiEntity, applyLineWidth;
     private HistorySlider history;
     private StrengthSlider strength;
     private int scroll;
@@ -73,6 +74,7 @@ public final class TaaSettingsScreen extends Screen {
     }
     @Override protected void init() {
         String pending = samples == null ? Integer.toString(TaaClient.CONFIG.sampleCount) : samples.getValue();
+        String pendingWidth = lineWidth == null ? Double.toString(TaaClient.CONFIG.ssaaLineWidthMultiplier) : lineWidth.getValue();
         controls.clear(); rows.clear(); columns.clear();
         enabled = row(button(enabledLabel(), b -> {
             TaaClient.CONFIG.enabled = !TaaClient.CONFIG.enabled; resetRenderers(); changed(); refresh();
@@ -80,6 +82,7 @@ public final class TaaSettingsScreen extends Screen {
         row(button(label("taa.reset"), b -> {
             TaaClient.CONFIG.defaults(); resetRenderers(); changed();
             samples.setValue(Integer.toString(TaaClient.CONFIG.sampleCount)); history.refresh(); strength.refresh(); refresh();
+            lineWidth.setValue(Double.toString(TaaClient.CONFIG.ssaaLineWidthMultiplier));
         }, 150), 0, 1);
         algorithm = row(button(empty(), b -> {
             TaaClient.CONFIG.antialiasingMode ^= 1; resetRenderers(); changed(); refresh();
@@ -88,23 +91,32 @@ public final class TaaSettingsScreen extends Screen {
             TaaClient.CONFIG.ssaaScale = TaaClient.CONFIG.ssaaScale == 4 ? 2 : TaaClient.CONFIG.ssaaScale + 1;
             TaaClient.SSAA.reset(); changed(); refresh();
         }, 150), 1, 1);
-        history = row(new HistorySlider(), 2, 0);
+        guiEntity = row(button(empty(), b -> {
+            TaaClient.CONFIG.guiEntityAntialiasing = !TaaClient.CONFIG.guiEntityAntialiasing;
+            TaaClient.GUI_SSAA.reset(); changed(); refresh();
+        }, 310), 2, 0);
+        lineWidth = row(new EditBox(font, 0, 0, 150, 20, label("taa.line.width")), 3, 0);
+        lineWidth.setMaxLength(6);
+        lineWidth.setFilter(text -> text.chars().allMatch(c -> (c >= '0' && c <= '9') || c == '.'));
+        lineWidth.setValue(pendingWidth);
+        applyLineWidth = row(button(label("taa.line.width.apply"), b -> applyLineWidth(), 150), 3, 1);
+        history = row(new HistorySlider(), 4, 0);
         motion = row(button(empty(), b -> {
             TaaClient.CONFIG.reduceHistoryOnMotion = !TaaClient.CONFIG.reduceHistoryOnMotion; changed(); refresh();
-        }, 310), 3, 0);
-        samples = row(new EditBox(font, 0, 0, 150, 20, label("taa.samples")), 4, 0);
+        }, 310), 5, 0);
+        samples = row(new EditBox(font, 0, 0, 150, 20, label("taa.samples")), 6, 0);
         samples.setMaxLength(3); samples.setFilter(text -> text.chars().allMatch(c -> c >= '0' && c <= '9')); samples.setValue(pending);
-        apply = row(button(label("taa.samples.apply"), b -> applySamples(), 150), 4, 1);
+        apply = row(button(label("taa.samples.apply"), b -> applySamples(), 150), 6, 1);
         mode = row(button(empty(), b -> {
             TaaClient.CONFIG.sharpeningMode = (TaaClient.CONFIG.sharpeningMode + 1) % 3;
             changed(); strength.refresh(); refresh();
-        }, 150), 5, 0);
-        strength = row(new StrengthSlider(), 5, 1);
+        }, 150), 7, 0);
+        strength = row(new StrengthSlider(), 7, 1);
         debug = row(button(empty(), b -> {
             TaaClient.CONFIG.debugView = (TaaClient.CONFIG.debugView + 1) % 4;
             TaaClient.RENDERER.invalidate(); changed(); refresh();
-        }, 310), 6, 0);
-        clear = row(button(label("taa.clear.history"), b -> TaaClient.RENDERER.invalidate(), 310), 7, 0);
+        }, 310), 8, 0);
+        clear = row(button(label("taa.clear.history"), b -> TaaClient.RENDERER.invalidate(), 310), 9, 0);
         Button done = button(label("gui.done"), b -> onClose(), 200); position(done, width / 2 - 100, height - 27); add(done);
         refresh(); positionRows();
     }
@@ -116,7 +128,7 @@ public final class TaaSettingsScreen extends Screen {
         //#endif
     }
     private void positionRows() {
-        scroll = Math.max(0, Math.min(scroll, Math.max(0, 10 * 24 - (height - 95))));
+        scroll = Math.max(0, Math.min(scroll, Math.max(0, 12 * 24 - (height - 95))));
         for (int i = 0; i < controls.size(); i++) {
             int y = 55 + rows.get(i) * 24 - scroll;
             AbstractWidget control = controls.get(i);
@@ -130,6 +142,9 @@ public final class TaaSettingsScreen extends Screen {
         enabled.setMessage(enabledLabel());
         algorithm.setMessage(label("taa.algorithm", temporal ? "TAA" : "SSAA"));
         scale.setMessage(label("taa.ssaa.scale", factor * factor, factor, factor)); scale.active = !temporal;
+        guiEntity.setMessage(label("taa.gui.entity", label(TaaClient.CONFIG.guiEntityAntialiasing ? "options.on" : "options.off")));
+        guiEntity.active = !temporal;
+        lineWidth.active = applyLineWidth.active = !temporal; lineWidth.setEditable(!temporal);
         motion.setMessage(label("taa.motion", label(TaaClient.CONFIG.reduceHistoryOnMotion ? "options.on" : "options.off")));
         mode.setMessage(label("taa.sharpen.mode", label("taa.sharpen.mode." + TaaClient.CONFIG.sharpeningMode)));
         debug.setMessage(label("taa.debug", label("taa.debug." + TaaClient.CONFIG.debugView)));
@@ -137,7 +152,7 @@ public final class TaaSettingsScreen extends Screen {
         samples.setEditable(temporal);
     }
     private Component enabledLabel() { return label("taa.enabled", label(TaaClient.CONFIG.enabled ? "options.on" : "options.off")); }
-    private boolean errorNote() { return note.equals("taa.samples.invalid") || note.equals("taa.save.failed"); }
+    private boolean errorNote() { return note.equals("taa.samples.invalid") || note.equals("taa.line.width.invalid") || note.equals("taa.save.failed"); }
     private static void resetRenderers() { TaaClient.RENDERER.invalidate(); TaaClient.SSAA.reset(); }
     private void changed() { dirty = true; }
     private boolean applySamples() {
@@ -159,13 +174,32 @@ public final class TaaSettingsScreen extends Screen {
     private void save() {
         if (dirty) { dirty = !TaaClient.CONFIG.save(); if (dirty) note = "taa.save.failed"; }
     }
+    private boolean applyLineWidth() {
+        try {
+            double value = TaaConfig.parseLineWidthMultiplier(lineWidth.getValue());
+            if (value != TaaClient.CONFIG.ssaaLineWidthMultiplier) {
+                TaaClient.CONFIG.ssaaLineWidthMultiplier = value; changed();
+            }
+            lineWidth.setValue(Double.toString(value)); note = "taa.note";
+            return true;
+        } catch (NumberFormatException e) {
+            note = "taa.line.width.invalid";
+            //#if MC>=11903
+            lineWidth.setFocused(true);
+            //#else
+            //$$ lineWidth.setFocus(true);
+            //#endif
+            setFocused(lineWidth); return false;
+        }
+    }
     @Override public void onClose() {
-        if (TaaClient.CONFIG.antialiasingMode == 1 || applySamples()) { save(); if (!dirty) minecraft.setScreen(lastScreen); }
+        if (TaaClient.CONFIG.antialiasingMode == 1 ? applyLineWidth() : applySamples()) { save(); if (!dirty) minecraft.setScreen(lastScreen); }
     }
     @Override public void removed() { save(); super.removed(); }
     @Override public void tick() {
         //#if MC<12000
         //$$ samples.tick();
+        //$$ lineWidth.tick();
         //#endif
         super.tick();
     }
@@ -174,10 +208,10 @@ public final class TaaSettingsScreen extends Screen {
         renderBackground(graphics, mouseX, mouseY, delta);
         graphics.drawCenteredString(font, title, width / 2, 12, 0xffffff);
         graphics.drawCenteredString(font, label(errorNote() ? note : TaaClient.statusKey()), width / 2, 34, errorNote() ? 0xff5555 : 0xaaaaaa);
-        for (int i = 8; i < 10; i++) {
+        for (int i = 10; i < 12; i++) {
             int y = 55 + i * 24 - scroll;
             if (y >= 55 && y + 20 <= height - 39)
-                graphics.drawCenteredString(font, label(i == 8 ? "taa.coverage" : note), width / 2, y + 5, 0xaaaaaa);
+                graphics.drawCenteredString(font, label(i == 10 ? "taa.coverage" : note), width / 2, y + 5, 0xaaaaaa);
         }
         super.render(graphics, mouseX, mouseY, delta);
     }
@@ -186,9 +220,9 @@ public final class TaaSettingsScreen extends Screen {
     //$$     renderBackground(graphics);
     //$$     drawCenteredString(graphics, font, title, width / 2, 12, 0xffffff);
     //$$     drawCenteredString(graphics, font, label(errorNote() ? note : TaaClient.statusKey()), width / 2, 34, errorNote() ? 0xff5555 : 0xaaaaaa);
-    //$$     for (int i = 8; i < 10; i++) {
+    //$$     for (int i = 10; i < 12; i++) {
     //$$         int y = 55 + i * 24 - scroll;
-    //$$         if (y >= 55 && y + 20 <= height - 39) drawCenteredString(graphics, font, label(i == 8 ? "taa.coverage" : note), width / 2, y + 5, 0xaaaaaa);
+    //$$         if (y >= 55 && y + 20 <= height - 39) drawCenteredString(graphics, font, label(i == 10 ? "taa.coverage" : note), width / 2, y + 5, 0xaaaaaa);
     //$$     }
     //$$     super.render(graphics, mouseX, mouseY, delta);
     //$$ }

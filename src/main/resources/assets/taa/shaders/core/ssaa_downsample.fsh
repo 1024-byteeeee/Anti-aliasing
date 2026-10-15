@@ -16,6 +16,19 @@ void main() {
     bool horizontal = Parameters.y < 0.5;
     ivec2 pixel = ivec2(gl_FragCoord.xy);
     ivec2 dimensions = textureSize(SourceColor, 0);
+    // GUI entity textures contain premultiplied alpha. Average every subpixel,
+    // including transparent ones, without negative lobes or an opaque background.
+    if (Parameters.z > 0.5) {
+        vec4 sum = vec4(0);
+        for (int i = 0; i < 4; i++) {
+            if (i >= scale) break;
+            ivec2 source = horizontal ? ivec2(pixel.x * scale + i, pixel.y)
+                                     : ivec2(pixel.x, pixel.y * scale + i);
+            sum += texelFetch(SourceColor, clamp(source, ivec2(0), dimensions - 1), 0);
+        }
+        fragColor = sum / float(scale);
+        return;
+    }
     float center = (float(horizontal ? pixel.x : pixel.y) + 0.5) * float(scale) - 0.5;
     int first = int(floor(center)) - 2 * scale + 1;
     vec3 sum = vec3(0);

@@ -28,8 +28,7 @@ tasks.register('buildAndGather', Sync) {
     subprojects.each { variant ->
         dependsOn "${variant.path}:remapJar"
         from(variant.layout.buildDirectory.dir('libs')) {
-            include '*.jar'
-            exclude '*-sources.jar', '*-dev.jar'
+            include "${variant.archives_base_name}-mc${variant.minecraft_version}-${variant.version}.jar"
         }
     }
     into layout.buildDirectory.dir('libs')
